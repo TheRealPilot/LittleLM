@@ -1,10 +1,10 @@
-# simple transformer architecture using torch 
+# simple transformer architecture using torch modules
 
 import torch
 import numpy as np
 import torch.nn as nn
 from torch.nn import functional as F
-from torch.nn import TransformerEncoder, TransformerEncoderLayer
+from torch.nn import TransformerEncoder, TransformerEncoderLayer, Embedding
 import math
 
 class FFN(nn.Module):
@@ -56,27 +56,18 @@ class Decoder(nn.Module):
         out2 = self.norm3(out1 + ffn)
         return out2
 
-class Embedding(nn.Module):
-    def __init__(self, vocab_size, d_model):
-        super().__init__()
-        self.embed = nn.Linear(vocab_size, d_model, dtype=torch.bfloat16)
-
-    def forward(self, x):
-        x = self.embed(x) # returns a matrix of size seq_len, d_model
-        x = torch.mul(x, math.sqrt(d_model))
-    return x
 
 class PositionalEncoding(nn.Module):
     """pulled from https://machinelearningmastery.com/positional-encodings-in-transformer-models/"""
-    def __init__(self, d_model, N=10_000, dtype=torch.bfloat16) # N should be larger than the maximum sequence length
+    def __init__(self, d_model, N=10_000, dtype=torch.bfloat16): # N should be larger than the maximum sequence length
         super().__init__()
         self.d_model = d_model
-        _i = torch.arange(0, d_model//2. dtype=dtype)
+        _i = torch.arange(0, d_model//2, dtype=dtype)
         self.div = torch.exp(-np.log(N)*(2*_i/d_model))
 
     def forward(self, x):
         # remember that this function expects embedded inputs of shape seq_len, d_model
-        seq_lne = x.shape(0)
+        seq_len = x.size(0)
         position = torch.arange(seq_len).unsqueeze(1)
         pe = torch.zeros(seq_len, self.d_model)
         pe[:, 0::2] = torch.sin(position * self.div)
@@ -84,15 +75,18 @@ class PositionalEncoding(nn.Module):
         out = x + pe
         return out
 
-
 class Transformer(nn.Module):
     def __init__(self, pos_encoding, input_embedding, output_embedding, num_layers=6):
+        pass
 
 if __name__ == "__main__":
-    x = torch.randn(32, 512, dtype=torch.bfloat16)
-    pos_encoding = PositionalEncoding()
-    out = pos_encoding(x)
-    print(out.shape)
+    # x = torch.randn(32, 512, dtype=torch.bfloat16) # this is the shape post embedding layer(should also include bsz=1)
+    input = torch.LongTensor([x for x in range(32)]) 
+    pos_encoding = PositionalEncoding(d_model=512)
+    embedding = Embedding(num_embeddings=32_000,embedding_dim=512)
+    x = embedding(input)
+    output = pos_encoding(x)
+    print(output.shape) # currently supports only bsz = 1
 
     # x = torch.randn(10, 32, 512, dtype=torch.bfloat16) # single batch
     # xi = torch.rand(10, 32, 512, dtype=torch.bfloat16)
